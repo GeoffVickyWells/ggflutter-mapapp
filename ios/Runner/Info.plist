@@ -53,5 +53,59 @@
 	<array>
 		<string>location</string>
 	</array>
+	<!-- Register .geezerguide file type -->
+	<key>CFBundleDocumentTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>GeezerGuide File</string>
+			<key>LSHandlerRank</key>
+			<string>Owner</string>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>com.geezerguides.geezerguide</string>
+			</array>
+		</dict>
+	</array>
+	<!-- Declare the .geezerguide UTI (Uniform Type Identifier) -->
+	<key>UTExportedTypeDeclarations</key>
+	<array>
+		<dict>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.data</string>
+				<string>public.content</string>
+			</array>
+			<key>UTTypeDescription</key>
+			<string>GeezerGuide File</string>
+			<key>UTTypeIdentifier</key>
+			<string>com.geezerguides.geezerguide</string>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>geezerguide</string>
+				</array>
+				<key>public.mime-type</key>
+				<string>application/geezerguide</string>
+			</dict>
+		</dict>
+	</array>
+	<!-- Deep link URL scheme -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>com.geezerguides.app</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>geezerguides</string>
+			</array>
+		</dict>
+	</array>
 </dict>
 </plist>

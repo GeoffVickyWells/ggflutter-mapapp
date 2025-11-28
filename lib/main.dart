@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'services/location_service.dart';
 import 'services/map_mode_service.dart';
+import 'services/guide_book_service.dart';
+import 'services/import_handler_service.dart';
 import 'screens/startup_screen.dart';
-import 'screens/map_screen.dart';
+import 'screens/main_screen.dart';
 
 void main() {
   runApp(const GeezerGuidesApp());
@@ -18,6 +20,7 @@ class GeezerGuidesApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => LocationService()),
         ChangeNotifierProvider(create: (_) => MapModeService()),
+        ChangeNotifierProvider(create: (_) => GuideBookService()),
       ],
       child: MaterialApp(
         title: 'GeezerGuides',
@@ -47,10 +50,18 @@ class AppInitializer extends StatefulWidget {
 }
 
 class _AppInitializerState extends State<AppInitializer> {
+  ImportHandlerService? _importHandler;
+
   @override
   void initState() {
     super.initState();
     _initializeApp();
+  }
+
+  @override
+  void dispose() {
+    _importHandler?.dispose();
+    super.dispose();
   }
 
   Future<void> _initializeApp() async {
@@ -63,6 +74,14 @@ class _AppInitializerState extends State<AppInitializer> {
       debugPrint('❌ App initialization failed - no location permission');
       return;
     }
+
+    // Initialize guide book service (load saved guides)
+    final guideBookService = context.read<GuideBookService>();
+    await guideBookService.initialize();
+
+    // Initialize import handler (for deep links and file sharing)
+    _importHandler = ImportHandlerService(guideBookService);
+    await _importHandler!.initialize();
 
     debugPrint('✅ App initialization complete');
   }
@@ -80,7 +99,7 @@ class _AppInitializerState extends State<AppInitializer> {
         }
 
         // Location permission granted - show main app
-        return const MapScreen();
+        return const MainScreen();
       },
     );
   }

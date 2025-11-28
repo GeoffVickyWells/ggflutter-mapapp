@@ -3,8 +3,8 @@ class Waypoint {
   final String id;
   final String name;
   final String category;
-  final String description;
-  final String address;
+  final String? description;
+  final String? address;
   final String bookId;
   final double latitude;
   final double longitude;
@@ -30,13 +30,13 @@ class Waypoint {
       id: json['id'] as String,
       name: json['name'] as String,
       category: json['category'] as String,
-      description: json['description'] as String? ?? '',
-      address: json['address'] as String? ?? '',
-      bookId: json['bookID'] as String,
+      description: json['description'] as String?,
+      address: json['address'] as String?,
+      bookId: json['book_id'] as String? ?? json['bookID'] as String? ?? '',
       latitude: (json['latitude'] as num).toDouble(),
       longitude: (json['longitude'] as num).toDouble(),
-      isVisited: json['isVisited'] as bool? ?? false,
-      isWishlist: json['isWishlist'] as bool? ?? false,
+      isVisited: json['is_visited'] as bool? ?? json['isVisited'] as bool? ?? false,
+      isWishlist: json['is_wishlist'] as bool? ?? json['isWishlist'] as bool? ?? false,
     );
   }
 

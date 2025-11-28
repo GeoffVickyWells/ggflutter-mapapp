@@ -30,6 +30,8 @@ dependencies:
 
   # Utilities
   provider: ^6.1.2                 # State management
+  uni_links: ^0.5.1                # Deep link handling
+  receive_sharing_intent: ^1.8.0   # Receive files from share/email
 
 dev_dependencies:
   flutter_test:

@@ -1,0 +1,132 @@
+{
+  "id": "barcelona-2024",
+  "version": "1.0",
+  "guidebook_id": "geezer-guides-barcelona",
+  "title": "GeezerGuides Barcelona",
+  "city": "Barcelona",
+  "country": "Spain",
+  "author": "Geoff & Vicky Wells",
+  "last_updated": "2024-01-15T10:00:00Z",
+  "waypoints": [
+    {
+      "id": "wp-001",
+      "name": "Sagrada Família",
+      "category": "attraction",
+      "description": "Antoni Gaudí's iconic unfinished masterpiece. A stunning basilica with intricate facades and breathtaking interior. Book tickets online in advance to avoid long queues.",
+      "address": "Carrer de Mallorca, 401, 08013 Barcelona",
+      "book_id": "barcelona-2024",
+      "latitude": 41.4036,
+      "longitude": 2.1744,
+      "is_visited": false,
+      "is_wishlist": true
+    },
+    {
+      "id": "wp-002",
+      "name": "Park Güell",
+      "category": "park",
+      "description": "Colorful park with mosaic-covered structures designed by Gaudí. Offers panoramic views of Barcelona. The monumental zone requires tickets.",
+      "address": "08024 Barcelona, Spain",
+      "book_id": "barcelona-2024",
+      "latitude": 41.4145,
+      "longitude": 2.1527,
+      "is_visited": false,
+      "is_wishlist": true
+    },
+    {
+      "id": "wp-003",
+      "name": "La Boqueria Market",
+      "category": "food",
+      "description": "Famous food market on Las Ramblas. Fresh produce, seafood, jamón, and tapas bars. Can get crowded - visit early morning for best experience.",
+      "address": "La Rambla, 91, 08001 Barcelona",
+      "book_id": "barcelona-2024",
+      "latitude": 41.3818,
+      "longitude": 2.1717,
+      "is_visited": false,
+      "is_wishlist": false
+    },
+    {
+      "id": "wp-004",
+      "name": "Gothic Quarter",
+      "category": "attraction",
+      "description": "Medieval neighborhood with narrow streets, hidden squares, and historic buildings. Home to Barcelona Cathedral and many charming cafes.",
+      "address": "Barri Gòtic, Barcelona",
+      "book_id": "barcelona-2024",
+      "latitude": 41.3828,
+      "longitude": 2.1761,
+      "is_visited": false,
+      "is_wishlist": false
+    },
+    {
+      "id": "wp-005",
+      "name": "Casa Batlló",
+      "category": "museum",
+      "description": "Modernist building by Gaudí with unique organic shapes and colorful tiles. Audio guide included with ticket. Located on the elegant Passeig de Gràcia.",
+      "address": "Passeig de Gràcia, 43, 08007 Barcelona",
+      "book_id": "barcelona-2024",
+      "latitude": 41.3916,
+      "longitude": 2.1649,
+      "is_visited": false,
+      "is_wishlist": true
+    },
+    {
+      "id": "wp-006",
+      "name": "Barceloneta Beach",
+      "category": "park",
+      "description": "Popular city beach with golden sand. Great for swimming, sunbathing, and beachfront dining. Can get very crowded in summer.",
+      "address": "Platja de la Barceloneta, 08003 Barcelona",
+      "book_id": "barcelona-2024",
+      "latitude": 41.3806,
+      "longitude": 2.1895,
+      "is_visited": false,
+      "is_wishlist": false
+    },
+    {
+      "id": "wp-007",
+      "name": "Cervecería Catalana",
+      "category": "restaurant",
+      "description": "Excellent tapas restaurant. Try the jamón ibérico, patatas bravas, and pan con tomate. Very popular - arrive early or expect a wait.",
+      "address": "Carrer de Mallorca, 236, 08008 Barcelona",
+      "book_id": "barcelona-2024",
+      "latitude": 41.3935,
+      "longitude": 2.1602,
+      "is_visited": false,
+      "is_wishlist": true
+    },
+    {
+      "id": "wp-008",
+      "name": "Hospital de Sant Pau",
+      "category": "medical",
+      "description": "Historic Art Nouveau hospital complex, now a museum and cultural center. Beautiful modernist architecture in a peaceful setting.",
+      "address": "Carrer de Sant Antoni Maria Claret, 167, 08025 Barcelona",
+      "book_id": "barcelona-2024",
+      "latitude": 41.4139,
+      "longitude": 2.1745,
+      "is_visited": false,
+      "is_wishlist": false
+    },
+    {
+      "id": "wp-009",
+      "name": "Passeig de Gràcia Metro",
+      "category": "transport",
+      "description": "Major metro station on Lines 2, 3, and 4. Central location for accessing major attractions. Close to shopping district.",
+      "address": "Passeig de Gràcia, Barcelona",
+      "book_id": "barcelona-2024",
+      "latitude": 41.3953,
+      "longitude": 2.1614,
+      "is_visited": false,
+      "is_wishlist": false
+    },
+    {
+      "id": "wp-010",
+      "name": "El Corte Inglés",
+      "category": "shopping",
+      "description": "Large department store with clothing, electronics, groceries, and rooftop restaurant with city views. Good for one-stop shopping.",
+      "address": "Plaça de Catalunya, 14, 08002 Barcelona",
+      "book_id": "barcelona-2024",
+      "latitude": 41.3870,
+      "longitude": 2.1700,
+      "is_visited": false,
+      "is_wishlist": false
+    }
+  ]
+}
