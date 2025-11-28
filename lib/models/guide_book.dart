@@ -34,12 +34,12 @@ class GuideBook {
     return GuideBook(
       id: json['id'] as String,
       version: json['version'] as String,
-      guidebookId: json['guidebookID'] as String,
+      guidebookId: json['guidebook_id'] as String? ?? json['guidebookID'] as String,
       title: json['title'] as String,
       city: json['city'] as String,
       country: json['country'] as String,
       author: json['author'] as String,
-      lastUpdated: DateTime.parse(json['lastUpdated'] as String),
+      lastUpdated: DateTime.parse(json['last_updated'] as String? ?? json['lastUpdated'] as String),
       waypoints: waypoints,
     );
   }
