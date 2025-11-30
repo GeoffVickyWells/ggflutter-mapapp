@@ -1,14 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
-import 'package:latlong2/latlong.dart';
+import 'package:maplibre_gl/maplibre_gl.dart';
 import 'package:provider/provider.dart';
 import '../services/location_service.dart';
 import '../services/map_mode_service.dart';
 import '../services/guide_book_service.dart';
-import '../models/waypoint.dart';
-import 'dart:io';
+import '../models/waypoint.dart' as models;
 
-/// Enhanced Map Screen with full UI controls
+/// Enhanced Map Screen with MapLibre GL for offline support
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
 
@@ -17,7 +15,7 @@ class MapScreen extends StatefulWidget {
 }
 
 class _MapScreenState extends State<MapScreen> {
-  final MapController _mapController = MapController();
+  MapLibreMapController? _mapController;
   bool _lockCenter = false;
   bool _headingUp = false;
   LatLng? _homeLocation;
@@ -28,6 +26,10 @@ class _MapScreenState extends State<MapScreen> {
   bool _showFood = true;
   bool _showAttractions = true;
   bool _showWaypoints = true;
+
+  // Track added symbols for updates
+  final Map<String, Symbol> _waypointSymbols = {};
+  Symbol? _userSymbol;
 
   @override
   Widget build(BuildContext context) {
@@ -71,170 +73,131 @@ class _MapScreenState extends State<MapScreen> {
             ? LatLng(position.latitude, position.longitude)
             : LatLng(41.3851, 2.1734); // Default: Barcelona
 
-        // Get waypoints and filter by layer visibility
-        final allWaypoints = guideBookService.activeGuideBook?.waypoints ?? [];
-        final filteredWaypoints = allWaypoints.where((wp) {
-          if (!_showWaypoints) return false;
-          switch (wp.category.toLowerCase()) {
-            case 'transport':
-              return _showTransport;
-            case 'medical':
-              return _showMedical;
-            case 'restaurant':
-            case 'food':
-              return _showFood;
-            case 'attraction':
-            case 'museum':
-            case 'park':
-            case 'shopping':
-              return _showAttractions;
-            default:
-              return true;
+        // Update user location marker when position changes
+        if (position != null && _mapController != null) {
+          _updateUserMarker(position.latitude, position.longitude);
+
+          // Auto-center if lock is enabled
+          if (_lockCenter) {
+            _mapController!.animateCamera(CameraUpdate.newLatLng(center));
           }
-        }).toList();
+        }
 
-        return FlutterMap(
-          mapController: _mapController,
-          options: MapOptions(
-            initialCenter: center,
-            initialZoom: 15.0,
-            minZoom: 3.0,
-            maxZoom: 19.0,
-            onPositionChanged: (position, hasGesture) {
-              // Disable lock center if user manually moves map
-              if (hasGesture && _lockCenter) {
-                setState(() => _lockCenter = false);
-              }
-            },
+        return MapLibreMap(
+          styleString: mapModeService.isOnline
+              ? 'https://demotiles.maplibre.org/style.json'
+              : _getOfflineStyleUrl(),
+          initialCameraPosition: CameraPosition(
+            target: center,
+            zoom: 15.0,
           ),
-          children: [
-            // Tile layer - CRITICAL FOR OFFLINE QUALITY
-            TileLayer(
-              urlTemplate: mapModeService.isOnline
-                  ? 'https://tile.openstreetmap.org/{z}/{x}/{y}.png'
-                  : _getOfflineTilePath(),
-              userAgentPackageName: 'com.geezerguides.app',
-              maxNativeZoom: 19, // Critical for street-level detail
-              minNativeZoom: 1,
-              tileSize: 256,
-              // Offline tile loading
-              tileProvider: mapModeService.isOffline
-                  ? FileTileProvider()
-                  : NetworkTileProvider(),
-            ),
+          minMaxZoomPreference: MinMaxZoomPreference(3.0, 19.0),
+          myLocationEnabled: true,
+          onMapCreated: (controller) async {
+            _mapController = controller;
+            debugPrint('✅ MapLibre map created');
 
-            // Waypoint markers
-            if (filteredWaypoints.isNotEmpty)
-              MarkerLayer(
-                markers: filteredWaypoints.map((waypoint) {
-                  return Marker(
-                    point: LatLng(waypoint.latitude, waypoint.longitude),
-                    width: 50,
-                    height: 50,
-                    child: GestureDetector(
-                      onTap: () => _showWaypointDetails(waypoint),
-                      child: _buildWaypointMarker(waypoint),
-                    ),
-                  );
-                }).toList(),
-              ),
-
-            // HOME location marker
-            if (_homeLocation != null)
-              MarkerLayer(
-                markers: [
-                  Marker(
-                    point: _homeLocation!,
-                    width: 60,
-                    height: 60,
-                    child: _buildHomeMarker(),
-                  ),
-                ],
-              ),
-
-            // User location marker (always on top)
-            if (position != null)
-              MarkerLayer(
-                markers: [
-                  Marker(
-                    point: LatLng(position.latitude, position.longitude),
-                    width: 40,
-                    height: 40,
-                    child: _buildUserMarker(),
-                  ),
-                ],
-              ),
-          ],
+            // Load waypoints after map is ready
+            await Future.delayed(const Duration(milliseconds: 500));
+            _updateWaypoints(guideBookService.activeGuideBook?.waypoints ?? []);
+          },
+          onMapClick: (point, coordinates) {
+            debugPrint('🔵 Map clicked at: $coordinates');
+          },
+          onCameraIdle: () {
+            // User manually moved map - disable lock
+            if (_lockCenter) {
+              setState(() => _lockCenter = false);
+            }
+          },
         );
       },
     );
   }
 
-  String _getOfflineTilePath() {
-    // TODO: Implement actual offline tile storage
-    // For now, return placeholder for UI testing
-    return 'file:///path/to/offline/tiles/{z}/{x}/{y}.png';
+  String _getOfflineStyleUrl() {
+    // TODO: Implement actual offline style loading
+    // For now, use online fallback
+    return 'https://demotiles.maplibre.org/style.json';
   }
 
-  Widget _buildUserMarker() {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.blue.withOpacity(0.3),
-        shape: BoxShape.circle,
-      ),
-      child: const Center(
-        child: Icon(
-          Icons.my_location,
-          color: Colors.blue,
-          size: 24,
+  Future<void> _updateUserMarker(double lat, double lng) async {
+    if (_mapController == null) return;
+
+    try {
+      // Remove old marker if exists
+      if (_userSymbol != null) {
+        await _mapController!.removeSymbol(_userSymbol!);
+      }
+
+      // Add new marker
+      _userSymbol = await _mapController!.addSymbol(
+        SymbolOptions(
+          geometry: LatLng(lat, lng),
+          iconImage: 'marker-15', // Built-in marker
+          iconSize: 1.5,
+          iconColor: '#0000FF',
         ),
-      ),
-    );
+      );
+    } catch (e) {
+      debugPrint('⚠️ Error updating user marker: $e');
+    }
   }
 
-  Widget _buildHomeMarker() {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.purple.shade100,
-        shape: BoxShape.circle,
-        border: Border.all(color: Colors.purple.shade700, width: 3),
-      ),
-      child: Icon(
-        Icons.home,
-        color: Colors.purple.shade700,
-        size: 32,
-      ),
-    );
-  }
+  Future<void> _updateWaypoints(List<models.Waypoint> waypoints) async {
+    if (_mapController == null) return;
 
-  Widget _buildWaypointMarker(Waypoint waypoint) {
-    final iconData = _getWaypointIcon(waypoint.category);
-    final color = _getWaypointColor(waypoint.category);
+    try {
+      // Clear existing waypoint symbols
+      for (final symbol in _waypointSymbols.values) {
+        await _mapController!.removeSymbol(symbol);
+      }
+      _waypointSymbols.clear();
 
-    return Stack(
-      alignment: Alignment.center,
-      children: [
-        Container(
-          decoration: BoxDecoration(
-            color: color,
-            shape: BoxShape.circle,
-            border: Border.all(color: Colors.white, width: 3),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.3),
-                blurRadius: 6,
-                offset: const Offset(0, 2),
-              ),
-            ],
+      // Filter waypoints by layer visibility
+      final filteredWaypoints = waypoints.where((wp) {
+        if (!_showWaypoints) return false;
+        switch (wp.category.toLowerCase()) {
+          case 'transport':
+            return _showTransport;
+          case 'medical':
+            return _showMedical;
+          case 'restaurant':
+          case 'food':
+            return _showFood;
+          case 'attraction':
+          case 'museum':
+          case 'park':
+          case 'shopping':
+            return _showAttractions;
+          default:
+            return true;
+        }
+      }).toList();
+
+      // Add new waypoint symbols
+      for (final waypoint in filteredWaypoints) {
+        final symbol = await _mapController!.addSymbol(
+          SymbolOptions(
+            geometry: LatLng(waypoint.latitude, waypoint.longitude),
+            iconImage: 'marker-15',
+            iconSize: 1.2,
+            iconColor: _getWaypointColorHex(waypoint.category),
+            textField: waypoint.name,
+            textSize: 12.0,
+            textOffset: Offset(0, 2),
+            textColor: '#000000',
+            textHaloColor: '#FFFFFF',
+            textHaloWidth: 2.0,
           ),
-          child: Icon(
-            iconData,
-            color: Colors.white,
-            size: 24,
-          ),
-        ),
-      ],
-    );
+        );
+        _waypointSymbols[waypoint.id] = symbol;
+      }
+
+      debugPrint('✅ Updated ${filteredWaypoints.length} waypoint markers');
+    } catch (e) {
+      debugPrint('⚠️ Error updating waypoints: $e');
+    }
   }
 
   Widget _buildMenuButton() {
@@ -388,6 +351,7 @@ class _MapScreenState extends State<MapScreen> {
             onTap: () {
               setState(() => _headingUp = !_headingUp);
               debugPrint('🔵 Heading Up: $_headingUp');
+              // TODO: Implement compass heading rotation
             },
           ),
           const SizedBox(height: 6),
@@ -454,8 +418,10 @@ class _MapScreenState extends State<MapScreen> {
       left: 16,
       child: FloatingActionButton.extended(
         onPressed: () {
-          if (_homeLocation != null) {
-            _mapController.move(_homeLocation!, 16.0);
+          if (_homeLocation != null && _mapController != null) {
+            _mapController!.animateCamera(
+              CameraUpdate.newLatLngZoom(_homeLocation!, 16.0),
+            );
           }
         },
         backgroundColor: Colors.purple.shade700,
@@ -507,18 +473,19 @@ class _MapScreenState extends State<MapScreen> {
 
   void _centerOnUser() {
     final position = context.read<LocationService>().currentPosition;
-    if (position != null) {
-      _mapController.move(
-        LatLng(position.latitude, position.longitude),
-        15.0,
+    if (position != null && _mapController != null) {
+      _mapController!.animateCamera(
+        CameraUpdate.newLatLngZoom(
+          LatLng(position.latitude, position.longitude),
+          15.0,
+        ),
       );
     }
   }
 
-  void _testImportBarcelona() async {
+  Future<void> _testImportBarcelona() async {
     final guideBookService = context.read<GuideBookService>();
 
-    // Use importFromJson instead of file path (works on simulator)
     final testJson = '''
 {
   "id": "barcelona-2024",
@@ -534,7 +501,7 @@ class _MapScreenState extends State<MapScreen> {
       "id": "wp-001",
       "name": "Sagrada Família",
       "category": "attraction",
-      "description": "Antoni Gaudí's iconic unfinished masterpiece. A stunning basilica with intricate facades and breathtaking interior.",
+      "description": "Antoni Gaudí's iconic unfinished masterpiece.",
       "address": "Carrer de Mallorca, 401, 08013 Barcelona",
       "book_id": "barcelona-2024",
       "latitude": 41.4036,
@@ -546,7 +513,7 @@ class _MapScreenState extends State<MapScreen> {
       "id": "wp-002",
       "name": "Park Güell",
       "category": "park",
-      "description": "Colorful park with mosaic-covered structures designed by Gaudí. Offers panoramic views of Barcelona.",
+      "description": "Colorful park with mosaic-covered structures by Gaudí.",
       "address": "08024 Barcelona, Spain",
       "book_id": "barcelona-2024",
       "latitude": 41.4145,
@@ -558,7 +525,7 @@ class _MapScreenState extends State<MapScreen> {
       "id": "wp-003",
       "name": "La Boqueria Market",
       "category": "food",
-      "description": "Famous food market on Las Ramblas. Fresh produce, seafood, jamón, and tapas bars.",
+      "description": "Famous food market on Las Ramblas.",
       "address": "La Rambla, 91, 08001 Barcelona",
       "book_id": "barcelona-2024",
       "latitude": 41.3818,
@@ -570,7 +537,7 @@ class _MapScreenState extends State<MapScreen> {
       "id": "wp-004",
       "name": "Gothic Quarter",
       "category": "attraction",
-      "description": "Medieval neighborhood with narrow streets, hidden squares, and historic buildings.",
+      "description": "Medieval neighborhood with narrow streets.",
       "address": "Barri Gòtic, Barcelona",
       "book_id": "barcelona-2024",
       "latitude": 41.3828,
@@ -582,7 +549,7 @@ class _MapScreenState extends State<MapScreen> {
       "id": "wp-005",
       "name": "Casa Batlló",
       "category": "museum",
-      "description": "Modernist building by Gaudí with unique organic shapes and colorful tiles.",
+      "description": "Modernist building by Gaudí.",
       "address": "Passeig de Gràcia, 43, 08007 Barcelona",
       "book_id": "barcelona-2024",
       "latitude": 41.3916,
@@ -607,9 +574,14 @@ class _MapScreenState extends State<MapScreen> {
         ),
       );
 
-      // Zoom to Barcelona center after import
-      if (success) {
-        _mapController.move(LatLng(41.3851, 2.1734), 13.0);
+      // Update markers and zoom to Barcelona
+      if (success && _mapController != null) {
+        final waypoints = guideBookService.activeGuideBook?.waypoints ?? [];
+        await _updateWaypoints(waypoints);
+
+        _mapController!.animateCamera(
+          CameraUpdate.newLatLngZoom(LatLng(41.3851, 2.1734), 13.0),
+        );
       }
     }
   }
@@ -638,26 +610,32 @@ class _MapScreenState extends State<MapScreen> {
             const SizedBox(height: 24),
             _buildLayerToggle('Waypoints', Icons.place, _showWaypoints, (val) {
               setState(() => _showWaypoints = val);
+              final waypoints = context.read<GuideBookService>().activeGuideBook?.waypoints ?? [];
+              _updateWaypoints(waypoints);
               Navigator.pop(context);
             }),
-            _buildLayerToggle('Attractions', Icons.star, _showAttractions,
-                (val) {
+            _buildLayerToggle('Attractions', Icons.star, _showAttractions, (val) {
               setState(() => _showAttractions = val);
+              final waypoints = context.read<GuideBookService>().activeGuideBook?.waypoints ?? [];
+              _updateWaypoints(waypoints);
               Navigator.pop(context);
             }),
-            _buildLayerToggle('Food & Restaurants', Icons.restaurant, _showFood,
-                (val) {
+            _buildLayerToggle('Food & Restaurants', Icons.restaurant, _showFood, (val) {
               setState(() => _showFood = val);
+              final waypoints = context.read<GuideBookService>().activeGuideBook?.waypoints ?? [];
+              _updateWaypoints(waypoints);
               Navigator.pop(context);
             }),
-            _buildLayerToggle(
-                'Transport', Icons.directions_transit, _showTransport, (val) {
+            _buildLayerToggle('Transport', Icons.directions_transit, _showTransport, (val) {
               setState(() => _showTransport = val);
+              final waypoints = context.read<GuideBookService>().activeGuideBook?.waypoints ?? [];
+              _updateWaypoints(waypoints);
               Navigator.pop(context);
             }),
-            _buildLayerToggle('Medical', Icons.local_hospital, _showMedical,
-                (val) {
+            _buildLayerToggle('Medical', Icons.local_hospital, _showMedical, (val) {
               setState(() => _showMedical = val);
+              final waypoints = context.read<GuideBookService>().activeGuideBook?.waypoints ?? [];
+              _updateWaypoints(waypoints);
               Navigator.pop(context);
             }),
           ],
@@ -679,10 +657,7 @@ class _MapScreenState extends State<MapScreen> {
           Icon(icon, size: 28, color: Colors.grey.shade700),
           const SizedBox(width: 16),
           Expanded(
-            child: Text(
-              label,
-              style: const TextStyle(fontSize: 18),
-            ),
+            child: Text(label, style: const TextStyle(fontSize: 18)),
           ),
           Switch(
             value: value,
@@ -764,175 +739,28 @@ class _MapScreenState extends State<MapScreen> {
     );
   }
 
-  void _showWaypointDetails(Waypoint waypoint) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => _buildWaypointDetailSheet(waypoint),
-    );
-  }
-
-  Widget _buildWaypointDetailSheet(Waypoint waypoint) {
-    return Consumer<LocationService>(
-      builder: (context, locationService, child) {
-        final distance = locationService.distanceTo(
-          waypoint.latitude,
-          waypoint.longitude,
-        );
-        final distanceText = distance != null
-            ? '${(distance / 1000).toStringAsFixed(1)} km away'
-            : 'Distance unknown';
-
-        return Container(
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.only(
-              topLeft: Radius.circular(20),
-              topRight: Radius.circular(20),
-            ),
-          ),
-          padding: EdgeInsets.only(
-            top: 20,
-            left: 24,
-            right: 24,
-            bottom: MediaQuery.of(context).padding.bottom + 24,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade300,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: _getWaypointColor(waypoint.category),
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(_getWaypointIcon(waypoint.category),
-                            color: Colors.white, size: 16),
-                        const SizedBox(width: 6),
-                        Text(
-                          waypoint.category.toUpperCase(),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const Spacer(),
-                  Text(distanceText,
-                      style: TextStyle(fontSize: 14, color: Colors.grey.shade600)),
-                ],
-              ),
-              const SizedBox(height: 16),
-              Text(waypoint.name,
-                  style: const TextStyle(
-                      fontSize: 24, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 8),
-              if (waypoint.address != null)
-                Row(
-                  children: [
-                    Icon(Icons.location_on, size: 18, color: Colors.grey.shade600),
-                    const SizedBox(width: 4),
-                    Expanded(child: Text(waypoint.address!,
-                        style: TextStyle(fontSize: 14, color: Colors.grey.shade700))),
-                  ],
-                ),
-              const SizedBox(height: 16),
-              if (waypoint.description != null)
-                Text(waypoint.description!,
-                    style: const TextStyle(fontSize: 16, height: 1.5)),
-              const SizedBox(height: 24),
-              ElevatedButton.icon(
-                onPressed: () {
-                  Navigator.pop(context);
-                  _mapController.move(
-                      LatLng(waypoint.latitude, waypoint.longitude), 17.0);
-                },
-                icon: const Icon(Icons.navigation, size: 24),
-                label: const Text('Navigate', style: TextStyle(fontSize: 18)),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue.shade700,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  minimumSize: const Size(double.infinity, 56),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12)),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  IconData _getWaypointIcon(String category) {
+  String _getWaypointColorHex(String category) {
     switch (category.toLowerCase()) {
       case 'attraction':
-        return Icons.star;
+        return '#D32F2F';
       case 'restaurant':
       case 'food':
-        return Icons.restaurant;
+        return '#F57C00';
       case 'hotel':
       case 'accommodation':
-        return Icons.hotel;
+        return '#7B1FA2';
       case 'museum':
-        return Icons.museum;
+        return '#5D4037';
       case 'park':
-        return Icons.park;
+        return '#388E3C';
       case 'shopping':
-        return Icons.shopping_bag;
+        return '#C2185B';
       case 'transport':
-        return Icons.directions_transit;
+        return '#1976D2';
       case 'medical':
-        return Icons.local_hospital;
+        return '#B71C1C';
       default:
-        return Icons.place;
-    }
-  }
-
-  Color _getWaypointColor(String category) {
-    switch (category.toLowerCase()) {
-      case 'attraction':
-        return Colors.red.shade700;
-      case 'restaurant':
-      case 'food':
-        return Colors.orange.shade700;
-      case 'hotel':
-      case 'accommodation':
-        return Colors.purple.shade700;
-      case 'museum':
-        return Colors.brown.shade700;
-      case 'park':
-        return Colors.green.shade700;
-      case 'shopping':
-        return Colors.pink.shade700;
-      case 'transport':
-        return Colors.blue.shade700;
-      case 'medical':
-        return Colors.red.shade900;
-      default:
-        return Colors.grey.shade700;
+        return '#616161';
     }
   }
 }
