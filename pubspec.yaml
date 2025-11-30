@@ -15,8 +15,7 @@ dependencies:
   cupertino_icons: ^1.0.8
 
   # Maps & Location
-  flutter_map: ^7.0.2              # OpenStreetMap integration
-  latlong2: ^0.9.1                 # Coordinate handling
+  maplibre_gl: ^0.20.0             # MapLibre GL for offline maps
   geolocator: ^13.0.2              # GPS location services
   permission_handler: ^11.3.1      # Runtime permissions
 
