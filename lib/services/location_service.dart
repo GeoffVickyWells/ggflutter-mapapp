@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 
@@ -7,11 +8,14 @@ class LocationService extends ChangeNotifier {
   Position? _currentPosition;
   bool _permissionGranted = false;
   bool _serviceEnabled = false;
+  bool _isTracking = true; // GPS tracking active by default
   String? _errorMessage;
+  StreamSubscription<Position>? _positionStreamSubscription;
 
   Position? get currentPosition => _currentPosition;
   bool get permissionGranted => _permissionGranted;
   bool get serviceEnabled => _serviceEnabled;
+  bool get isTracking => _isTracking;
   String? get errorMessage => _errorMessage;
 
   /// Check if app is ready to use (has location permission)
@@ -97,20 +101,50 @@ class LocationService extends ChangeNotifier {
 
   /// Start listening to position changes (for real-time tracking)
   void startPositionStream() {
-    if (!_permissionGranted) return;
+    if (!_permissionGranted || !_isTracking) return;
+
+    // Cancel any existing stream
+    _positionStreamSubscription?.cancel();
 
     const locationSettings = LocationSettings(
       accuracy: LocationAccuracy.high,
       distanceFilter: 10,
     );
 
-    Geolocator.getPositionStream(locationSettings: locationSettings)
-        .listen((Position position) {
+    _positionStreamSubscription =
+        Geolocator.getPositionStream(locationSettings: locationSettings)
+            .listen((Position position) {
       _currentPosition = position;
       notifyListeners();
     });
 
     debugPrint('✅ LocationService: Position stream started');
+  }
+
+  /// Pause GPS tracking (to save battery)
+  void pauseTracking() {
+    _isTracking = false;
+    _positionStreamSubscription?.cancel();
+    _positionStreamSubscription = null;
+    debugPrint('⏸️ LocationService: GPS tracking paused');
+    notifyListeners();
+  }
+
+  /// Resume GPS tracking
+  void resumeTracking() {
+    _isTracking = true;
+    startPositionStream();
+    debugPrint('▶️ LocationService: GPS tracking resumed');
+    notifyListeners();
+  }
+
+  /// Toggle GPS tracking on/off
+  void toggleTracking() {
+    if (_isTracking) {
+      pauseTracking();
+    } else {
+      resumeTracking();
+    }
   }
 
   /// Open device settings (for when permission is denied)
@@ -128,5 +162,12 @@ class LocationService extends ChangeNotifier {
       latitude,
       longitude,
     );
+  }
+
+  /// Clean up when service is disposed
+  @override
+  void dispose() {
+    _positionStreamSubscription?.cancel();
+    super.dispose();
   }
 }
