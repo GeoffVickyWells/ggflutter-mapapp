@@ -46,28 +46,52 @@ class _MapScreenState extends State<MapScreen> {
           }
         }
 
-        return MapLibreMap(
-          key: ValueKey(mapModeService.isOnline), // Force rebuild when mode changes
-          styleString: mapModeService.isOnline
-              ? 'https://tiles.openfreemap.org/styles/liberty'
-              : _getOfflineStyleUrl(),
-          initialCameraPosition: CameraPosition(
-            target: center,
-            zoom: 15.0,
-          ),
-          minMaxZoomPreference: MinMaxZoomPreference(3.0, 19.0),
-          myLocationEnabled: false, // Disabled - we handle location display ourselves
-          onMapCreated: (controller) async {
-            _mapController = controller;
-            debugPrint('✅ MapLibre map created (${mapModeService.isOnline ? "ONLINE" : "OFFLINE"} mode)');
+        return Stack(
+          children: [
+            MapLibreMap(
+              key: ValueKey(mapModeService.isOnline), // Force rebuild when mode changes
+              styleString: mapModeService.isOnline
+                  ? 'https://tiles.openfreemap.org/styles/liberty'
+                  : _getOfflineStyleUrl(),
+              initialCameraPosition: CameraPosition(
+                target: center,
+                zoom: 15.0,
+              ),
+              minMaxZoomPreference: MinMaxZoomPreference(3.0, 19.0),
+              myLocationEnabled: false, // Disabled - we handle location display ourselves
+              attributionButtonMargins: Point(-100, -100), // Hide attribution button off-screen
+              onMapCreated: (controller) async {
+                _mapController = controller;
+                debugPrint('✅ MapLibre map created (${mapModeService.isOnline ? "ONLINE" : "OFFLINE"} mode)');
 
-            // Load waypoints after map is ready
-            await Future.delayed(const Duration(milliseconds: 500));
-            _updateWaypoints(guideBookService.activeGuideBook?.waypoints ?? []);
-          },
-          onMapClick: (point, coordinates) {
-            debugPrint('🔵 Map clicked at: $coordinates');
-          },
+                // Load waypoints after map is ready
+                await Future.delayed(const Duration(milliseconds: 500));
+                _updateWaypoints(guideBookService.activeGuideBook?.waypoints ?? []);
+              },
+              onMapClick: (point, coordinates) {
+                debugPrint('🔵 Map clicked at: $coordinates');
+              },
+            ),
+            // Custom attribution overlay
+            Positioned(
+              right: 8,
+              bottom: 8,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.7),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  '© OSM',
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: Colors.black.withOpacity(0.6),
+                  ),
+                ),
+              ),
+            ),
+          ],
         );
       },
     );

@@ -282,7 +282,7 @@ class _MainScreenState extends State<MainScreen> {
 
           const Divider(height: 1),
 
-          // Settings content (placeholder for now)
+          // Settings content
           Expanded(
             child: ListView(
               padding: const EdgeInsets.all(20),
@@ -297,6 +297,31 @@ class _MainScreenState extends State<MainScreen> {
                 ),
                 const SizedBox(height: 12),
                 const Text('Coming soon: POI filters, map type, Where am I, Direction Up, Save Home'),
+
+                const SizedBox(height: 32),
+                const Divider(),
+                const SizedBox(height: 16),
+
+                Text(
+                  'Map Attribution',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.grey.shade700,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'Map data © OpenStreetMap contributors\n\n'
+                  'OpenStreetMap is a free, editable map of the whole world created by volunteers. '
+                  'The map tiles are provided by OpenFreeMap.\n\n'
+                  'This app uses MapLibre GL, an open-source library for rendering maps.',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey.shade600,
+                    height: 1.5,
+                  ),
+                ),
               ],
             ),
           ),
