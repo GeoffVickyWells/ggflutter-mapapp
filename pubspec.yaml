@@ -64,9 +64,12 @@ flutter:
   assets:
     - assets/protomaps_light.json
     - assets/osm_bright.json
-    # MBTiles files will be added here after generation with Tilemaker
-    # - assets/maps/barcelona.mbtiles
-    # - assets/maps/eleuthera.mbtiles
+    # MBTiles files
+    - assets/maps/barcelona.mbtiles
+    - assets/maps/eleuthera.mbtiles
+    # Font glyphs for offline map labels
+    - assets/fonts/Open Sans Regular/
+    - assets/fonts/Open Sans Semibold/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

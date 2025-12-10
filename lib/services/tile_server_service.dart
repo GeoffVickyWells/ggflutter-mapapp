@@ -60,12 +60,17 @@ class TileServerService {
     debugPrint('🛑 TileServerService: Server stopped');
   }
 
-  /// Handle tile requests from MBTiles databases
+  /// Handle tile and font requests
   Future<shelf.Response> _handleRequest(shelf.Request request) async {
     try {
       debugPrint('🌐 TileServerService: Request received: ${request.url.path}');
 
       final segments = request.url.pathSegments;
+
+      // Handle font requests: /fonts/{fontstack}/{range}.pbf
+      if (segments.isNotEmpty && segments[0] == 'fonts') {
+        return await _handleFontRequest(segments);
+      }
 
       // Handle tile requests: /tiles/{mapId}/{z}/{x}/{y}.pbf
       if (segments.length != 5 || segments[0] != 'tiles') {
@@ -172,6 +177,41 @@ class TileServerService {
     }
   }
 
+  /// Handle font glyph requests
+  Future<shelf.Response> _handleFontRequest(List<String> segments) async {
+    try {
+      // Expected format: /fonts/{fontstack}/{range}.pbf
+      if (segments.length != 3) {
+        debugPrint('⚠️ TileServerService: Invalid font path format');
+        return shelf.Response.notFound('Invalid font path');
+      }
+
+      final fontstack = Uri.decodeComponent(segments[1]);
+      final rangeFile = segments[2]; // e.g., "0-255.pbf"
+
+      // Load font glyph from assets
+      final assetPath = 'assets/fonts/$fontstack/$rangeFile';
+      debugPrint('📝 TileServerService: Loading font from $assetPath');
+
+      final ByteData data = await rootBundle.load(assetPath);
+      final Uint8List bytes = data.buffer.asUint8List();
+
+      debugPrint('✅ TileServerService: Serving font $fontstack/$rangeFile (${bytes.length} bytes)');
+
+      return shelf.Response.ok(
+        bytes,
+        headers: {
+          'Content-Type': 'application/x-protobuf',
+          'Cache-Control': 'public, max-age=31536000',
+          'Access-Control-Allow-Origin': '*',
+        },
+      );
+    } catch (e) {
+      debugPrint('❌ TileServerService: Error serving font: $e');
+      return shelf.Response.notFound('Font not found');
+    }
+  }
+
   /// Get tile URL template for MapLibre style JSON
   String getTileUrlTemplate(String mapId, {bool isVector = false}) {
     if (_baseUrl == null) {
@@ -179,5 +219,13 @@ class TileServerService {
     }
     final extension = isVector ? 'pbf' : 'png';
     return '$_baseUrl/tiles/$mapId/{z}/{x}/{y}.$extension';
+  }
+
+  /// Get font glyphs URL template for MapLibre style JSON
+  String getFontGlyphsUrl() {
+    if (_baseUrl == null) {
+      throw StateError('Tile server not running');
+    }
+    return '$_baseUrl/fonts/{fontstack}/{range}.pbf';
   }
 }

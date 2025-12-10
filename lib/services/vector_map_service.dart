@@ -63,7 +63,7 @@ class VectorMapService extends ChangeNotifier {
   }
 
   /// Get the style JSON for a specific map
-  Future<Map<String, dynamic>> getStyleJsonObject(String mapId, String tileUrl) async {
+  Future<Map<String, dynamic>> getStyleJsonObject(String mapId, String tileUrl, {String? fontGlyphsUrl}) async {
     // Load the OSM Bright style (compatible with Tilemaker OSM schema)
     final baseStyle = await rootBundle.loadString('assets/osm_bright.json');
     final styleJson = jsonDecode(baseStyle) as Map<String, dynamic>;
@@ -76,13 +76,19 @@ class VectorMapService extends ChangeNotifier {
       'maxzoom': 14,
     };
 
+    // Update glyphs URL to use local font server if provided
+    if (fontGlyphsUrl != null) {
+      styleJson['glyphs'] = fontGlyphsUrl;
+      debugPrint('✅ VectorMapService: Using local font glyphs: $fontGlyphsUrl');
+    }
+
     return styleJson;
   }
 
   /// Get the style JSON as a string (saved to file for iOS compatibility)
   /// iOS MapLibre does NOT support inline JSON - must use file:// URL
-  Future<String> getStyleJson(String mapId, String tileUrl) async {
-    final styleObj = await getStyleJsonObject(mapId, tileUrl);
+  Future<String> getStyleJson(String mapId, String tileUrl, {String? fontGlyphsUrl}) async {
+    final styleObj = await getStyleJsonObject(mapId, tileUrl, fontGlyphsUrl: fontGlyphsUrl);
     final styleJsonString = jsonEncode(styleObj);
 
     // Save to temp file for iOS MapLibre compatibility
