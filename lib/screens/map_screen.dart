@@ -1,9 +1,11 @@
+import 'dart:math' show Point;
 import 'package:flutter/material.dart';
 import 'package:maplibre_gl/maplibre_gl.dart';
 import 'package:provider/provider.dart';
 import '../services/location_service.dart';
 import '../services/map_mode_service.dart';
 import '../services/guide_book_service.dart';
+import '../services/offline_map_service.dart';
 import '../models/waypoint.dart' as models;
 
 /// Enhanced Map Screen with MapLibre GL for offline support
@@ -29,13 +31,20 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   Widget _buildMap() {
-    return Consumer3<LocationService, MapModeService, GuideBookService>(
-      builder: (context, locationService, mapModeService, guideBookService,
+    return Consumer4<LocationService, MapModeService, GuideBookService, OfflineMapService>(
+      builder: (context, locationService, mapModeService, guideBookService, offlineMapService,
           child) {
         final position = locationService.currentPosition;
-        final center = position != null
-            ? LatLng(position.latitude, position.longitude)
-            : LatLng(41.3851, 2.1734); // Default: Barcelona
+
+        // Determine center: if offline mode and target is set, use target; otherwise use user location
+        final LatLng center;
+        if (mapModeService.isOffline && mapModeService.targetLat != null && mapModeService.targetLng != null) {
+          center = LatLng(mapModeService.targetLat!, mapModeService.targetLng!);
+        } else if (position != null) {
+          center = LatLng(position.latitude, position.longitude);
+        } else {
+          center = LatLng(41.3851, 2.1734); // Default: Barcelona
+        }
 
         // Update or remove user location marker based on GPS tracking state
         if (_mapController != null) {
@@ -44,22 +53,36 @@ class _MapScreenState extends State<MapScreen> {
           } else {
             _removeUserMarker();
           }
+
+          // Move camera to target location when switching to offline mode
+          if (mapModeService.isOffline && mapModeService.targetLat != null && mapModeService.targetLng != null) {
+            _mapController!.animateCamera(
+              CameraUpdate.newLatLngZoom(
+                LatLng(mapModeService.targetLat!, mapModeService.targetLng!),
+                14.0,
+              ),
+            );
+          }
         }
 
         return Stack(
           children: [
             MapLibreMap(
-              key: ValueKey(mapModeService.isOnline), // Force rebuild when mode changes
+              key: ValueKey('${mapModeService.isOnline}_${mapModeService.selectedOfflineMapId}'), // Force rebuild when mode or map changes
               styleString: mapModeService.isOnline
                   ? 'https://tiles.openfreemap.org/styles/liberty'
-                  : _getOfflineStyleUrl(),
+                  : _getOfflineStyleUrl(mapModeService, offlineMapService),
               initialCameraPosition: CameraPosition(
                 target: center,
                 zoom: 15.0,
               ),
               minMaxZoomPreference: MinMaxZoomPreference(3.0, 19.0),
               myLocationEnabled: false, // Disabled - we handle location display ourselves
-              attributionButtonMargins: Point(-100, -100), // Hide attribution button off-screen
+              compassEnabled: true,
+              compassViewPosition: CompassViewPosition.bottomLeft,
+              compassViewMargins: const Point(16, 80),
+              attributionButtonMargins: const Point(-1000, -1000), // Hide attribution far off-screen
+              logoViewMargins: const Point(-1000, -1000), // Hide logo far off-screen
               onMapCreated: (controller) async {
                 _mapController = controller;
                 debugPrint('✅ MapLibre map created (${mapModeService.isOnline ? "ONLINE" : "OFFLINE"} mode)');
@@ -77,16 +100,24 @@ class _MapScreenState extends State<MapScreen> {
               right: 8,
               bottom: 8,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.7),
+                  color: Colors.white.withOpacity(0.9),
                   borderRadius: BorderRadius.circular(4),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.1),
+                      blurRadius: 2,
+                      offset: const Offset(0, 1),
+                    ),
+                  ],
                 ),
                 child: Text(
-                  '© OSM',
-                  style: TextStyle(
-                    fontSize: 10,
-                    color: Colors.black.withOpacity(0.6),
+                  mapModeService.isOnline ? '© OSM (ONLINE)' : '© OSM (OFFLINE - ${mapModeService.selectedOfflineMapId ?? "none"})',
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: Colors.black54,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
               ),
@@ -97,9 +128,22 @@ class _MapScreenState extends State<MapScreen> {
     );
   }
 
-  String _getOfflineStyleUrl() {
-    // TODO: Implement actual offline style loading from local storage
-    // For now, use a visually different online style (satellite) so user can see the toggle working
+  String _getOfflineStyleUrl(MapModeService mapModeService, OfflineMapService offlineMapService) {
+    // If no offline map is selected, fallback to satellite (visual indicator)
+    if (mapModeService.selectedOfflineMapId == null) {
+      debugPrint('⚠️ No offline map selected, using satellite style as fallback');
+      return 'https://tiles.openfreemap.org/styles/satellite';
+    }
+
+    // Use the cached offline style file path if available
+    if (mapModeService.offlineStyleJson != null) {
+      debugPrint('✅ Using cached offline style file for ${mapModeService.selectedOfflineMapId}');
+      debugPrint('📁 Style file path: ${mapModeService.offlineStyleJson!}');
+      return mapModeService.offlineStyleJson!;
+    }
+
+    // If style JSON not cached, fallback to satellite
+    debugPrint('⚠️ Offline style JSON not cached, using satellite as fallback');
     return 'https://tiles.openfreemap.org/styles/satellite';
   }
 

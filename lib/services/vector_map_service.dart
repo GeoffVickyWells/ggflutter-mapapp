@@ -1,6 +1,8 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart' show rootBundle;
+import 'package:path_provider/path_provider.dart';
 
 /// Service to manage vector map tiles (MBTiles format served via local server)
 class VectorMapService extends ChangeNotifier {
@@ -77,10 +79,21 @@ class VectorMapService extends ChangeNotifier {
     return styleJson;
   }
 
-  /// Get the style JSON as a string
+  /// Get the style JSON as a string (saved to file for iOS compatibility)
+  /// iOS MapLibre does NOT support inline JSON - must use file:// URL
   Future<String> getStyleJson(String mapId, String tileUrl) async {
     final styleObj = await getStyleJsonObject(mapId, tileUrl);
-    return jsonEncode(styleObj);
+    final styleJsonString = jsonEncode(styleObj);
+
+    // Save to temp file for iOS MapLibre compatibility
+    final tempDir = await getTemporaryDirectory();
+    final styleFile = File('${tempDir.path}/map_style_$mapId.json');
+    await styleFile.writeAsString(styleJsonString);
+
+    debugPrint('✅ VectorMapService: Style JSON saved to ${styleFile.path}');
+
+    // Return file path for iOS MapLibre
+    return styleFile.path;
   }
 
   @override
