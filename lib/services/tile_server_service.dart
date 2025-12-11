@@ -14,6 +14,7 @@ class TileServerService {
   int? _port;
   String? _baseUrl;
   final Map<String, Database> _databases = {}; // Cache MBTiles databases
+  final Map<String, Uint8List> _fontCache = {}; // Cache font glyphs for fast access
 
   String? get baseUrl => _baseUrl;
   bool get isRunning => _server != null;
@@ -177,7 +178,7 @@ class TileServerService {
     }
   }
 
-  /// Handle font glyph requests
+  /// Handle font glyph requests with caching
   Future<shelf.Response> _handleFontRequest(List<String> segments) async {
     try {
       // Expected format: /fonts/{fontstack}/{range}.pbf
@@ -188,15 +189,33 @@ class TileServerService {
 
       final fontstack = Uri.decodeComponent(segments[1]);
       final rangeFile = segments[2]; // e.g., "0-255.pbf"
+      final cacheKey = '$fontstack/$rangeFile';
 
-      // Load font glyph from assets
+      // Check cache first
+      if (_fontCache.containsKey(cacheKey)) {
+        final bytes = _fontCache[cacheKey]!;
+        debugPrint('⚡ TileServerService: Serving cached font $cacheKey (${bytes.length} bytes)');
+
+        return shelf.Response.ok(
+          bytes,
+          headers: {
+            'Content-Type': 'application/x-protobuf',
+            'Cache-Control': 'public, max-age=31536000',
+            'Access-Control-Allow-Origin': '*',
+          },
+        );
+      }
+
+      // Load font glyph from assets (first time)
       final assetPath = 'assets/fonts/$fontstack/$rangeFile';
-      debugPrint('📝 TileServerService: Loading font from $assetPath');
+      debugPrint('📝 TileServerService: Loading font from $assetPath (not cached)');
 
       final ByteData data = await rootBundle.load(assetPath);
       final Uint8List bytes = data.buffer.asUint8List();
 
-      debugPrint('✅ TileServerService: Serving font $fontstack/$rangeFile (${bytes.length} bytes)');
+      // Cache the font for future requests
+      _fontCache[cacheKey] = bytes;
+      debugPrint('✅ TileServerService: Cached and serving font $cacheKey (${bytes.length} bytes)');
 
       return shelf.Response.ok(
         bytes,
