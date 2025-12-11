@@ -74,7 +74,7 @@ class _MapScreenState extends State<MapScreen> {
                   : _getOfflineStyleUrl(mapModeService, offlineMapService),
               initialCameraPosition: CameraPosition(
                 target: center,
-                zoom: 15.0,
+                zoom: 12.0, // Zoom 12 shows city overview with detail
               ),
               minMaxZoomPreference: MinMaxZoomPreference(3.0, 19.0),
               myLocationEnabled: false, // Disabled - we handle location display ourselves

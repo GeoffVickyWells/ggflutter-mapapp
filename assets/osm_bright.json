@@ -33,6 +33,20 @@
       }
     },
     {
+      "id": "water_outline",
+      "type": "line",
+      "source": "osm",
+      "source-layer": "water",
+      "filter": ["==", ["geometry-type"], "LineString"],
+      "paint": {
+        "line-color": "#6ba3c0",
+        "line-width": {
+          "base": 1.2,
+          "stops": [[8, 0.8], [12, 1.5], [20, 3]]
+        }
+      }
+    },
+    {
       "id": "waterway",
       "type": "line",
       "source": "osm",
@@ -278,7 +292,7 @@
         "text-field": "{name:latin}",
         "text-font": ["Open Sans Regular"],
         "text-size": {
-          "stops": [[13, 11], [14, 12], [20, 16]]
+          "stops": [[12, 10], [13, 11], [14, 12], [20, 16]]
         },
         "symbol-placement": "line",
         "text-rotation-alignment": "map"

@@ -657,9 +657,11 @@ class _MainScreenState extends State<MainScreen> {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: DropdownButtonFormField<String>(
+                  isExpanded: true,
                   decoration: InputDecoration(
                     hintText: 'Select a city to download...',
                     prefixIcon: const Icon(Icons.cloud_download),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
