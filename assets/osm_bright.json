@@ -29,7 +29,8 @@
       "filter": ["==", ["geometry-type"], "Polygon"],
       "paint": {
         "fill-color": "#a8ddf0",
-        "fill-opacity": 1
+        "fill-opacity": 1,
+        "fill-outline-color": "#6ba3c0"
       }
     },
     {
@@ -287,6 +288,7 @@
       "type": "symbol",
       "source": "osm",
       "source-layer": "transportation_name",
+      "minzoom": 12,
       "filter": ["!=", "class", "ferry"],
       "layout": {
         "text-field": "{name:latin}",
@@ -295,7 +297,10 @@
           "stops": [[12, 10], [13, 11], [14, 12], [20, 16]]
         },
         "symbol-placement": "line",
-        "text-rotation-alignment": "map"
+        "text-rotation-alignment": "map",
+        "text-max-angle": 30,
+        "symbol-spacing": 250,
+        "text-padding": 2
       },
       "paint": {
         "text-color": "#765",
