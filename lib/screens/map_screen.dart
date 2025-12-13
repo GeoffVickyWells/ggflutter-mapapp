@@ -99,9 +99,8 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   String _getOfflineStyleUrl() {
-    // TODO: Implement actual offline style loading from local storage
-    // For now, use a visually different online style (satellite) so user can see the toggle working
-    return 'https://tiles.openfreemap.org/styles/satellite';
+    // Use local Barcelona offline style with MBTiles
+    return 'asset://assets/barcelona_offline.json';
   }
 
   Future<void> _updateUserMarker(double lat, double lng) async {

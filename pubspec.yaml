@@ -64,8 +64,9 @@ flutter:
   assets:
     - assets/protomaps_light.json
     - assets/osm_bright.json
-    # MBTiles files will be added here after generation with Tilemaker
-    # - assets/maps/barcelona.mbtiles
+    - assets/barcelona_offline.json
+    # MBTiles files - offline map data
+    - assets/maps/barcelona.mbtiles
     # - assets/maps/eleuthera.mbtiles
 
   # An image asset can refer to one or more resolution-specific "variants", see
