@@ -12,7 +12,7 @@ enum MapMode {
 /// - Offline mode: ONLY displays locally stored tiles
 class MapModeService extends ChangeNotifier {
   MapMode _currentMode = MapMode.online;
-  String? _selectedOfflineMapId;
+  String? _selectedOfflineMapId = 'barcelona'; // Default to barcelona
 
   MapMode get currentMode => _currentMode;
   String? get selectedOfflineMapId => _selectedOfflineMapId;
@@ -48,7 +48,7 @@ class MapModeService extends ChangeNotifier {
       return false;
     }
 
-    debugPrint('🔵 MapModeService: Switching to OFFLINE mode');
+    debugPrint('🔵 MapModeService: Switching to OFFLINE mode (map: $_selectedOfflineMapId)');
     _currentMode = MapMode.offline;
     notifyListeners();
     return true;

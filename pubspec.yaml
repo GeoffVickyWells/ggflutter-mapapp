@@ -68,6 +68,9 @@ flutter:
     # MBTiles files - offline map data
     - assets/maps/barcelona.mbtiles
     # - assets/maps/eleuthera.mbtiles
+    # Font glyphs for offline map labels
+    - assets/fonts/Open Sans Regular/
+    - assets/fonts/Open Sans Semibold/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

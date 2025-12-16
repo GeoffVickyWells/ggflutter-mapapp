@@ -5,6 +5,8 @@ import 'package:provider/provider.dart';
 import '../services/location_service.dart';
 import '../services/map_mode_service.dart';
 import '../services/guide_book_service.dart';
+import '../services/tile_server_service.dart';
+import '../services/vector_map_service.dart';
 import '../models/waypoint.dart' as models;
 
 /// Enhanced Map Screen with MapLibre GL for offline support
@@ -22,6 +24,11 @@ class _MapScreenState extends State<MapScreen> {
   final Map<String, Symbol> _waypointSymbols = {};
   Circle? _userLocationCircle;
 
+  // Cache the offline style file path
+  String? _offlineStylePath;
+  String? _lastInitializedMapId; // Track which map was last initialized
+  bool _isLoadingStyle = false;
+
   @override
   Widget build(BuildContext context) {
     // Just render the map - no UI controls
@@ -30,16 +37,30 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   Widget _buildMap() {
-    return Consumer3<LocationService, MapModeService, GuideBookService>(
-      builder: (context, locationService, mapModeService, guideBookService,
+    return Consumer5<LocationService, MapModeService, GuideBookService, TileServerService, VectorMapService>(
+      builder: (context, locationService, mapModeService, guideBookService, tileServerService, vectorMapService,
           child) {
-        final position = locationService.currentPosition;
-        final center = position != null
-            ? LatLng(position.latitude, position.longitude)
-            : LatLng(41.3851, 2.1734); // Default: Barcelona
+        // Determine camera center based on mode and selected map
+        LatLng center;
+        if (mapModeService.isOnline) {
+          // Online mode: use GPS if available, else default to Barcelona
+          final position = locationService.currentPosition;
+          center = position != null
+              ? LatLng(position.latitude, position.longitude)
+              : LatLng(41.3851, 2.1734);
+        } else {
+          // Offline mode: use selected map's center
+          final selectedMapId = mapModeService.selectedOfflineMapId;
+          final selectedMap = vectorMapService.availableMaps.firstWhere(
+            (map) => map.id == selectedMapId,
+            orElse: () => vectorMapService.availableMaps.first,
+          );
+          center = LatLng(selectedMap.centerLat, selectedMap.centerLng);
+        }
 
         // Update or remove user location marker based on GPS tracking state
         if (_mapController != null) {
+          final position = locationService.currentPosition;
           if (locationService.isTracking && position != null) {
             _updateUserMarker(position.latitude, position.longitude);
           } else {
@@ -47,16 +68,37 @@ class _MapScreenState extends State<MapScreen> {
           }
         }
 
+        // Ensure tile server is running for offline mode
+        // Re-initialize if map selection changed
+        final currentMapId = mapModeService.selectedOfflineMapId;
+        if (!mapModeService.isOnline && (currentMapId != _lastInitializedMapId || !tileServerService.isRunning) && !_isLoadingStyle) {
+          _initializeOfflineMap(tileServerService, vectorMapService, mapModeService);
+        }
+
+        // Show loading indicator while initializing offline map
+        if (!mapModeService.isOnline && _offlineStylePath == null) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                CircularProgressIndicator(),
+                SizedBox(height: 16),
+                Text('Loading offline map...'),
+              ],
+            ),
+          );
+        }
+
         return Stack(
           children: [
             MapLibreMap(
-              key: ValueKey(mapModeService.isOnline), // Force rebuild when mode changes
+              key: ValueKey('${mapModeService.isOnline}_${mapModeService.selectedOfflineMapId}'), // Force rebuild when mode or map changes
               styleString: mapModeService.isOnline
                   ? 'https://tiles.openfreemap.org/styles/liberty'
-                  : _getOfflineStyleUrl(),
+                  : _offlineStylePath!,
               initialCameraPosition: CameraPosition(
                 target: center,
-                zoom: 15.0,
+                zoom: 12.0, // Zoom 12 for better city overview
               ),
               minMaxZoomPreference: MinMaxZoomPreference(3.0, 19.0),
               myLocationEnabled: false, // Disabled - we handle location display ourselves
@@ -98,9 +140,46 @@ class _MapScreenState extends State<MapScreen> {
     );
   }
 
-  String _getOfflineStyleUrl() {
-    // Use local Barcelona offline style with MBTiles
-    return 'asset://assets/barcelona_offline.json';
+  /// Initialize offline map with tile server and dynamic style generation
+  Future<void> _initializeOfflineMap(TileServerService tileServerService, VectorMapService vectorMapService, MapModeService mapModeService) async {
+    if (_isLoadingStyle) return;
+    _isLoadingStyle = true;
+
+    try {
+      debugPrint('🚀 Initializing offline map...');
+
+      // Start tile server
+      if (!tileServerService.isRunning) {
+        await tileServerService.start();
+        debugPrint('✅ Tile server started');
+      }
+
+      // Get the selected map ID (default to barcelona)
+      final mapId = mapModeService.selectedOfflineMapId ?? 'barcelona';
+
+      // Generate tile and font URLs
+      final tileUrl = tileServerService.getTileUrlTemplate(mapId, isVector: true);
+      final fontUrl = tileServerService.getFontGlyphsUrl();
+
+      debugPrint('🗺️ Tile URL: $tileUrl');
+      debugPrint('🔤 Font URL: $fontUrl');
+
+      // Generate style JSON file path (iOS requires file path, not inline JSON)
+      final stylePath = await vectorMapService.getStyleJson(mapId, tileUrl, fontGlyphsUrl: fontUrl);
+
+      if (mounted) {
+        setState(() {
+          _offlineStylePath = stylePath;
+          _lastInitializedMapId = mapId;
+        });
+      }
+
+      debugPrint('✅ Offline map initialized: $stylePath');
+    } catch (e) {
+      debugPrint('❌ Error initializing offline map: $e');
+    } finally {
+      _isLoadingStyle = false;
+    }
   }
 
   Future<void> _updateUserMarker(double lat, double lng) async {

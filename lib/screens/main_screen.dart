@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'map_screen.dart';
 import '../services/map_mode_service.dart';
 import '../services/location_service.dart';
+import '../services/vector_map_service.dart';
 
 /// Minimalist main screen with fullscreen map and 3 controls:
 /// - Top-left: Settings (gear icon)
@@ -331,58 +332,150 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   Widget _buildMapLoadSheet() {
-    return Container(
-      height: MediaQuery.of(context).size.height * 0.75,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      child: Column(
-        children: [
-          // Handle bar
-          Container(
-            margin: const EdgeInsets.only(top: 12),
-            width: 40,
-            height: 4,
-            decoration: BoxDecoration(
-              color: Colors.grey.shade300,
-              borderRadius: BorderRadius.circular(2),
-            ),
+    return Consumer2<MapModeService, VectorMapService>(
+      builder: (context, mapModeService, vectorMapService, child) {
+        return Container(
+          height: MediaQuery.of(context).size.height * 0.75,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
           ),
-
-          // Header
-          Padding(
-            padding: const EdgeInsets.all(20),
-            child: Row(
-              children: [
-                const Text(
-                  'Map Library',
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                  ),
+          child: Column(
+            children: [
+              // Handle bar
+              Container(
+                margin: const EdgeInsets.only(top: 12),
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(2),
                 ),
-                const Spacer(),
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('Done'),
+              ),
+
+              // Header
+              Padding(
+                padding: const EdgeInsets.all(20),
+                child: Row(
+                  children: [
+                    const Text(
+                      'Map Library',
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const Spacer(),
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('Done'),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-          ),
+              ),
 
-          const Divider(height: 1),
+              const Divider(height: 1),
 
-          // Map load content (placeholder for now)
-          Expanded(
-            child: ListView(
-              padding: const EdgeInsets.all(20),
-              children: const [
-                Text('Coming soon: Search and download offline maps'),
-              ],
-            ),
+              // Map content
+              Expanded(
+                child: ListView(
+                  padding: const EdgeInsets.all(20),
+                  children: [
+                    // Vector Maps Section (Bundled with app)
+                    Row(
+                      children: [
+                        Text(
+                          'Bundled Maps',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.grey.shade700,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.green.shade50,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.green.shade200),
+                          ),
+                          child: Text(
+                            'Vector',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.green.shade700,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'High-quality vector maps with street names',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey.shade500,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    ...vectorMapService.availableMaps.map((vectorMap) =>
+                        _buildVectorMapTile(vectorMap, mapModeService)),
+                  ],
+                ),
+              ),
+            ],
           ),
-        ],
+        );
+      },
+    );
+  }
+
+  Widget _buildVectorMapTile(VectorMapInfo vectorMap, MapModeService mapModeService) {
+    final isSelected = mapModeService.selectedOfflineMapId == vectorMap.id;
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 8),
+      color: isSelected ? Colors.blue.shade50 : Colors.white,
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+        leading: Radio<String>(
+          value: vectorMap.id,
+          groupValue: mapModeService.selectedOfflineMapId,
+          onChanged: (value) {
+            if (value != null) {
+              mapModeService.selectOfflineMap(value);
+              // Switch to offline mode
+              mapModeService.switchToOffline();
+            }
+          },
+        ),
+        title: Text(
+          vectorMap.name,
+          style: const TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        subtitle: Row(
+          children: [
+            Icon(Icons.check_circle, size: 14, color: Colors.green.shade600),
+            const SizedBox(width: 4),
+            Text(
+              'Ready • Vector',
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey.shade600,
+              ),
+            ),
+          ],
+        ),
+        onTap: () {
+          mapModeService.selectOfflineMap(vectorMap.id);
+          // Switch to offline mode
+          mapModeService.switchToOffline();
+        },
       ),
     );
   }

@@ -4,6 +4,8 @@ import 'services/location_service.dart';
 import 'services/map_mode_service.dart';
 import 'services/guide_book_service.dart';
 import 'services/import_handler_service.dart';
+import 'services/tile_server_service.dart';
+import 'services/vector_map_service.dart';
 import 'screens/startup_screen.dart';
 import 'screens/main_screen.dart';
 
@@ -21,6 +23,8 @@ class GeezerGuidesApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => LocationService()),
         ChangeNotifierProvider(create: (_) => MapModeService()),
         ChangeNotifierProvider(create: (_) => GuideBookService()),
+        Provider(create: (_) => TileServerService()),
+        ChangeNotifierProvider(create: (_) => VectorMapService()),
       ],
       child: MaterialApp(
         title: 'GeezerGuides',

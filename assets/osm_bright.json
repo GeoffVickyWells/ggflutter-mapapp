@@ -29,7 +29,22 @@
       "filter": ["==", ["geometry-type"], "Polygon"],
       "paint": {
         "fill-color": "#a8ddf0",
-        "fill-opacity": 1
+        "fill-opacity": 1,
+        "fill-outline-color": "#6ba3c0"
+      }
+    },
+    {
+      "id": "water_outline",
+      "type": "line",
+      "source": "osm",
+      "source-layer": "water",
+      "filter": ["==", ["geometry-type"], "LineString"],
+      "paint": {
+        "line-color": "#6ba3c0",
+        "line-width": {
+          "base": 1.2,
+          "stops": [[8, 0.8], [12, 1.5], [20, 3]]
+        }
       }
     },
     {
@@ -218,7 +233,7 @@
       "source-layer": "place",
       "filter": ["==", "class", "city"],
       "layout": {
-        "text-field": "{name}",
+        "text-field": "{name:latin}",
         "text-font": ["Open Sans Semibold"],
         "text-size": {
           "stops": [[4, 10], [6, 14]]
@@ -237,7 +252,7 @@
       "source-layer": "place",
       "filter": ["==", "class", "town"],
       "layout": {
-        "text-field": "{name}",
+        "text-field": "{name:latin}",
         "text-font": ["Open Sans Regular"],
         "text-size": {
           "stops": [[8, 9], [12, 13]]
@@ -256,7 +271,7 @@
       "source-layer": "poi",
       "minzoom": 14,
       "layout": {
-        "text-field": "{name}",
+        "text-field": "{name:latin}",
         "text-font": ["Open Sans Regular"],
         "text-size": 11,
         "text-anchor": "top",
@@ -273,15 +288,19 @@
       "type": "symbol",
       "source": "osm",
       "source-layer": "transportation_name",
+      "minzoom": 12,
       "filter": ["!=", "class", "ferry"],
       "layout": {
-        "text-field": "{name}",
+        "text-field": "{name:latin}",
         "text-font": ["Open Sans Regular"],
         "text-size": {
-          "stops": [[13, 11], [14, 12], [20, 16]]
+          "stops": [[12, 10], [13, 11], [14, 12], [20, 16]]
         },
         "symbol-placement": "line",
-        "text-rotation-alignment": "map"
+        "text-rotation-alignment": "map",
+        "text-max-angle": 30,
+        "symbol-spacing": 250,
+        "text-padding": 2
       },
       "paint": {
         "text-color": "#765",
